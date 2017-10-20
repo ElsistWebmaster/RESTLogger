@@ -1,0 +1,185 @@
+<!doctype html>
+<html>
+<head>
+<title>Home</title>
+<meta charset="utf-8">
+<!-- inclusioni skeleton http://getskeleton.com/ -->
+<link rel="stylesheet" href="css/normalize.css">
+<link rel="stylesheet" href="css/skeleton.css">
+<!-- inclusioni stili elsist -->
+<link rel="stylesheet" href="css/estyle.css?1">
+<!-- inclusioni ulteriori stilizzazioni -->
+<link href="https://fonts.googleapis.com/css?family=Montserrat" rel="stylesheet">
+<!-- inclusioni JQuery -->
+<script src="http://code.jquery.com/jquery-latest.js"></script>
+<!-- inclusioni script per grafico -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.4.0/Chart.min.js"></script>
+<script type="text/javascript">
+
+	// -------------------------------------------------------------------------
+	// DEFINIZIONE VARIABILI GLOBALI
+	// -------------------------------------------------------------------------
+	// Definizione variabili globali di script.
+
+	var myChart; //Oggetto chart
+
+	// Definizione dati chart (1 sola traccia).
+
+	var data=
+	{
+		labels: [], 
+		datasets: [{label: "", data: []}] 
+	}; 
+
+	// Definizione opzioni chart.
+
+	var options=
+	{
+		scales: {xAxes: [{ticks: { fontColor: "#FFFFFF", },}], yAxes: [{ticks: { fontColor: "#FFFFFF", },}],}, // Opzioni delle delle scale (su assi)
+		legend: {labels: {fontColor: "white", fontSize: 15},}, // Opzioni della label
+	};
+
+	// -------------------------------------------------------------------------
+	// FUNZIONE ESEGUITA SU LOAD PAGINA
+	// -------------------------------------------------------------------------
+	// Sul load della pagina creo chart ed attivo ajax.
+
+	$(document).ready(function()
+	{
+		CTx=$("#myChart").get(0).getContext("2d"); //Canvas
+		myChart=new Chart(CTx, {type: 'line', data, options}); //Creo oggeto chart
+		AjaxCall(); //Eseguo chiamata ajax su load pagina
+		setInterval(AjaxCall, 5000); //Imposto chiamata ciclica ajax
+
+		// Funzione gestione accordion.
+
+		$('.accordion-section-title').click(function(e)
+		{
+			var currentAttrValue = $(this).attr('href'); // Grab current anchor value
+
+			if ($(e.target).is('.active'))
+				{close_accordion_section();}
+			else
+			{
+				close_accordion_section();
+				$(this).addClass('active'); // Add active class to section title
+				$('.accordion ' + currentAttrValue).slideDown(300).addClass('open'); // Open up the hidden content panel
+			}
+			e.preventDefault();
+		});
+	});
+
+	// -------------------------------------------------------------------------
+	// FUNZIONE APERTURA/CHIUSURA ACCORDION
+	// -------------------------------------------------------------------------
+	// Funzione Apertura/Chiusura accordion.
+
+	function close_accordion_section()
+	{
+		$('.accordion .accordion-section-title').removeClass('active');
+		$('.accordion .accordion-section-content').slideUp(300).removeClass('open');
+	}
+
+	// -------------------------------------------------------------------------
+	// RICHIESTA AJAX
+	// -------------------------------------------------------------------------
+	// Viene eseguita la richiesta ajax. Eseguo lo script "AjaxSvc.php" passando
+	// i parametri in POST.
+
+	function AjaxCall()
+	{
+		// Acquisizione selettore variabile da visualizzare.
+
+		var Selector=document.getElementById("selector");
+		var Variable=Selector.options[Selector.selectedIndex].value;
+
+		// Eseguo invio richiesta ajax con parametri in POST.
+
+		$.ajax(
+		{
+			type:"POST",
+			url:"/Mdp095a200/Ptp145a000/AjaxSvc.php",
+			data:"Selector="+Variable,
+			dataType:"json",
+
+			// Funzione eseguita su successo chiamata.
+
+			success:function(Answer)
+			{
+				// Valorizzo console spionaggio.
+
+				$("#spyconsole").html(Answer.SpyConsole);
+
+				// Valorizzo valori visualizzati.
+
+				$("#voltage-value").text(Answer.Voltage);
+				$("#AcPower-value").text(Answer.AcPower);
+				$("#PwFactor-value").text(Answer.PwFactor);
+
+				// Imposto dati per grafico.
+
+				myChart.data.datasets[0].label=Answer.Label;
+				myChart.data.datasets[0].borderColor=Answer.Border;
+				myChart.data.datasets[0].backgroundColor=Answer.Area;
+
+				// Imposto valori assi X, Y.
+
+				myChart.data.labels=[];
+				myChart.data.datasets[0].data=[];
+				Answer.XAxis.forEach(function(entry){myChart.data.labels.push(entry);});
+				Answer.YAxis.forEach(function(entry){myChart.data.datasets[0].data.push(entry);});
+				myChart.update(); //Eseguo update grafico
+			},
+
+			// Funzione eseguita su errore chiamata.
+
+			error: function() {}
+		});
+	}
+</script>
+</head>
+<body>
+<div class="container">
+  <div class="row">
+    <div class="three columns center logo-container"><img src="img/Logo_Elsist.png" class="e-logo u-max-full-width"></div>
+    <div class="three columns block">
+      <div class="label-number"><span class="box green"></span>VOLTs</div>
+      <div class="value-number"><span id="voltage-value">0</span><span class="measure-unit">V</span></div>
+    </div>
+    <div class="three columns block">
+      <div class="label-number"><span class="box blue"></span>WATTs</div>
+      <div class="value-number"><span id="AcPower-value">0</span><span class="measure-unit">W</span></div>
+    </div>
+    <div class="three columns block">
+      <div class="label-number"><span class="box red"></span>PwFactor</div>
+      <div class="value-number"><span id="PwFactor-value">0</span></div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="twelve columns block">
+      <div onchange="AjaxCall(true)">
+        <select name="selector" id="selector">
+          <option value="Voltage" selected>Voltage</option>
+          <option value="Frequency">Frequency</option>
+          <option value="AcPower">AcPower</option>
+          <option value="PwFactor">PwFactor</option>
+        </select>
+      </div>
+      <canvas id="myChart"></canvas>
+    </div>
+  </div>
+  <div class="row">
+	<div class="twelve columns block">
+		<div class="accordion">
+			<div class="accordion-section">
+				<a class="accordion-section-title" href="#accordion-1">Spy</a>
+				<div id="accordion-1" class="accordion-section-content">
+					<div id="spyconsole"></div>
+				</div><!--end .accordion-section-content-->
+			</div><!--end .accordion-section-->
+			</div><!--end .accordion-->
+		</div>
+  </div>
+</div>
+</body>
+</html>

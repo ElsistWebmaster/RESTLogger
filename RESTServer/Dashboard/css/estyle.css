@@ -1,0 +1,138 @@
+@charset "utf-8";
+/*! Elsist Style */
+
+/* stilizzazione generale */
+
+body{
+	font-family: 'Montserrat', sans-serif;
+	background-color: #333333;
+	color:#ffffff;
+	padding: 10px;
+}
+
+.center{
+	text-align:center;	
+}
+
+.block{
+	background-color:#4c4c4c;
+	margin-bottom:5px;
+}
+
+div{
+	padding:5px;
+}
+
+.columns{
+	padding:5px;
+}
+
+/* stilizzazione per schermo piccolo */
+
+@media screen and (max-width: 794px) {
+	.value-number{
+		font-size: 30px !important;
+	}
+}
+
+/* stilizzazione blocchi numeri */
+
+.value-number{
+	font-size: 50px;
+	text-align:center;
+	line-height:1;
+}
+
+.measure-unit{
+	font-size: 20px;
+}
+
+.label-number{
+	font-size: 15px;
+}
+
+.box {
+  float: left;
+  width: 14px;
+  height: 14px;
+  margin: 5px;
+  vertical-align:middle;
+}
+
+.green {
+  background: rgba(139, 195, 74, 1);
+}
+
+.blue {
+  background: rgba(54, 162, 235, 1);
+}
+
+.red {
+  background:rgba(195, 66, 63, 1);
+}
+
+/* stilizzazione logo */
+
+.e-logo{
+    position: absolute;  
+    top: 0;  
+    bottom: 0;  
+    left: 0;  
+    right: 0;  
+    margin: auto;
+}
+
+.logo-container{
+	position:relative;
+	height:104px;
+}
+
+/* stilizzazione select */
+
+select {
+  outline: 0;
+  box-shadow: none;
+  border: 0 !important;
+  background: #333333;
+  background-image: none;
+}
+
+/* stilizzazione accordion */
+
+.accordion, .accordion * {
+    -webkit-box-sizing:border-box; 
+    -moz-box-sizing:border-box; 
+    box-sizing:border-box;
+	padding:0px;
+	font-size:10px;
+}
+ 
+.accordion {
+    overflow:hidden;
+    border-radius:3px;
+}
+ 
+.accordion-section-title {
+    width:100%;
+    padding:15px;
+    display:inline-block;
+    border-bottom:1px solid #ffffff;
+    transition:all linear 0.15s;
+    text-shadow:0px 1px 0px #1a1a1a;
+    color:#fff;
+}
+ 
+.accordion-section-title.active, .accordion-section-title:hover {
+    background:#4c4c4c;
+    text-decoration:none;
+}
+ 
+.accordion-section:last-child .accordion-section-title {
+    border-bottom:none;
+}
+
+.accordion-section-content {
+    padding:15px;
+    display:none;
+	background:#333333;
+}

@@ -1,21 +1,16 @@
 <?php
 
 // *****************************************************************************
-// Project		: PTP145A000
+// Project		: PTP145A100
 // Programmer	: Sergio Bertana
-// Date			: 20/10/2017
+// Date			: 21/06/2018
 // *****************************************************************************
 // Inclusioni generali.
 // -----------------------------------------------------------------------------
 
-
-// -----------------------------------------------------------------------------
-// 	INIZIALIZZAZIONI
-// -----------------------------------------------------------------------------
-// Abilito visualizzazione degli errori.
-
-ini_set('display_errors','On');
+// Error report
 error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
 // -----------------------------------------------------------------------------
 // CREDENZIALI ACCESSO AL DATABASE
@@ -23,10 +18,8 @@ error_reporting(E_ALL);
 // Definire le credenziali di accesso al database.
 // Occorre definire db_user, db_password, db_name, db_host:port
 
-$DbRefs=array("Host" => "localhost", "User" => "User", "Password" => "Password", "Database" => "Database");
+$DbRefs=array("Host" => "localhost", "User" => "user", "Password" => "password", "Database" => "database");
 $GLOBALS['Db']=new ezSQL_pdo("mysql:host={$DbRefs["Host"]}; dbname={$DbRefs["Database"]}", $DbRefs["User"], $DbRefs["Password"]); //Database PDO
-
-// Definizioni tabelle database.
 
 define("SISTEMIDX", "Ptp145_SystemIDx"); //Tabella ID di sistema
 define("RESTDATA", "Ptp145_RESTData"); //Tabella dati REST
@@ -35,39 +28,6 @@ define("SPYDATA", "Ptp145_SpyData"); //Tabella dati spionaggio
 // Definizioni generali.
 
 define("STORETIME", (30*60)); //Tempo di storicizzazione dati
-
-// -----------------------------------------------------------------------------
-// DEFINIZIONE VARIABILE GLOBALE DATI SISTEMA
-// -----------------------------------------------------------------------------
-// Array stato sistema contiene i dati per gestire il REST.
-
-$GLOBALS['St']=array
-(
-	// Dati ricevuti dal sistema.
-
-	"UID" => 0, //System unique ID
-	"MID" => 0, //Message ID
-	"MV" => "", //Message version
-	"RPAck" => 0, //REST parameters acknowledged
-	"Length" => 0, //Lunghezza record dati
-	"Epoch" => 0, //Epoch time relativo al record dati
-	"RxMessage" => "", //Messaggio ricevuto
-
-	// Variabili inviate dal sistema.
-
-	// Dati inviati al sistema SlimLine in risposta.
-
-	"RPCount" => 0, //REST parameters counter 
-	"TxMessage" => "", //Messaggio trasmesso
-
-	// Dati statistici per debug.
-
-	"RPError" => 0, //REST parameters error
-	"Resyncs" => 0, //REST resyncronizations
-	"PollTime" => 0, //Tempo poll sistema
-	"Heartbeat" => GetuTime(), //Data/Ora ultimo heartbeat (UTC)
-	"TxPars" => 0, //Numero parametri trasmessi
-);
 
 // *****************************************************************************
 // FUNZIONE "GetuTime()"
@@ -106,26 +66,25 @@ function GetTimeNow($Local)
 }
 
 // *****************************************************************************
-// FUNZIONE "UnixToMySQLTime($TimeStamp)"
+// FUNZIONE "EpochToMySQLTime($Epoch)"
 // *****************************************************************************
 // Questa funzione ritorna valore data/ora nel formato adatto a database MySQL.
 //
 // Parametri funzione:
-// $TimeStamp: Time stamp data e ora (In UTC).
+// $Epoch: Epoch time (In UTC).
 //
 // La funzione ritorna Data ora nel formato MySQL.
 // -----------------------------------------------------------------------------
 
-function UnixToMySQLTime($TimeStamp)
+function EpochToMySQLTime($Epoch)
 {
-	return(gmdate("Y-m-d H:i:s", $TimeStamp));
+	return(gmdate("Y-m-d H:i:s", $Epoch));
 }
 
 // *****************************************************************************
-// FUNZIONE "MySQLToUnixTime($DateTime)"
+// FUNZIONE "MySQLToEpochTime($DateTime)"
 // *****************************************************************************
-// Questa funzione calcola il tempo in formato Unix stamp da una data presente
-// nel database MySQL.
+// Questa funzione ritorna il valore di Epoch da una data formato MySQL.
 //
 // Parametri funzione:
 // $DateTime: Data e ora in formato MySQL.
@@ -133,59 +92,58 @@ function UnixToMySQLTime($TimeStamp)
 // La funzione ritorna il tempo unix.
 // -----------------------------------------------------------------------------
 
-function MySQLToUnixTime($DateTime)
+function MySQLToEpochTime($DateTime)
 {
 	list($Year, $Month, $Day, $Hour, $Minute, $Second)=sscanf($DateTime, "%04d-%02d-%02d %02d:%02d:%02d");
 	return(gmmktime($Hour, $Minute, $Second, $Month, $Day, $Year));
 }
 
 // *****************************************************************************
-// FUNZIONE "CkReqPars($AList)"
+// FUNZIONE "FIFOToEpochTime($DateTime)"
 // *****************************************************************************
-// Questa funzione esegue il controllo se sono definiti i parametri "$_REQUEST".
+// Questa funzione ritorna il valore di Epoch da una data formato FIFO.
 //
 // Parametri funzione:
-// $AList: Lista parametri da controllare
+// $DateTime: Data e ora in formato MySQL.
 //
-// La funzione ritorna, false: Errore parametri. true: Parametri corretti.
+// La funzione ritorna il tempo unix.
 // -----------------------------------------------------------------------------
 
-function CkReqPars($AList)
+function FIFOToEpochTime($DateTime)
 {
-	foreach ($AList as $Id => $Field) {if (!isset($_REQUEST[$Field])) return(false);} //Errore parametri
-	return(true); //Parametri corretti
+	list($Day, $Month, $Year, $Hour, $Minute, $Second)=sscanf($DateTime, "%02d/%02d/%04d %02d:%02d:%02d");
+	return(gmmktime($Hour, $Minute, $Second, $Month, $Day, $Year));
 }
 
 // *****************************************************************************
-// FUNZIONE "RESTData($TimeStamp, $Field, $Value)"
+// FUNZIONE "RESTData($DateTime, $Field, $Value)"
 // *****************************************************************************
 // Funzione di memorizzazione campo in tabella dati REST.
 //
 // Parametri funzione:
-// $TimeStamp: Time stamp data e ora (In UTC).
+// $DateTime: Data/Ora in formato MySQL.
 // $Field: Report spionaggio.
 // $Value: Report spionaggio.
 //
 // La funzione non prevede ritorni
 // -----------------------------------------------------------------------------
 
-function RESTData($TimeStamp, $Field, $Value)
+function RESTData($DateTime, $Field, $Value)
 {
 	// Lettura da database di ultimo valore memorizzato se nessuno inserisco.
 
-	$DbRow=$GLOBALS['Db']->get_row("SELECT * FROM ".RESTDATA." WHERE (UID = {$GLOBALS['St']['UID']} AND Field = '{$Field}') ORDER BY ID DESC LIMIT 1");
+	$DbRow=$GLOBALS['Db']->get_row("SELECT * FROM ".RESTDATA." WHERE (SID = {$GLOBALS['St']['SIDx']->ID} AND Field = '{$Field}') ORDER BY ID DESC LIMIT 1");
 	if ($DbRow == NULL) goto INSERTRECORD;
 
 	// Controllo se timestamp record minore del tempo di memorizzazione.
 
-	if (($TimeStamp-STORETIME) < MySQLToUnixTime($DbRow->DateTime))
-		{$GLOBALS['Db']->query("UPDATE ".RESTDATA." SET Value=".(($DbRow->Value+$Value)/2)." WHERE ID = {$DbRow->ID}"); return;}
+	if ((MySQLToEpochTime($DateTime)-STORETIME) < MySQLToEpochTime($DbRow->DateTime))
+	{$GLOBALS['Db']->query("UPDATE ".RESTDATA." SET Value=".(($DbRow->Value+$Value)/2)." WHERE ID = {$DbRow->ID}"); return;}
 
 	// Inserisco nuovo record in database.
 
 	INSERTRECORD:
-	SpyData("RESTData: Data:".UnixToMySQLTime($TimeStamp).", {$Field}=, {$Value}"); //Salvo spionaggio
-	$GLOBALS['Db']->query("INSERT INTO ".RESTDATA." (UID, DateTime, Field, Value) VALUES ({$GLOBALS['St']['UID']}, '".UnixToMySQLTime($TimeStamp)."', '{$Field}', '{$Value}')");
+	$GLOBALS['Db']->query("INSERT INTO ".RESTDATA." (SID, DateTime, Field, Value) VALUES ({$GLOBALS['St']['SIDx']->ID}, '$DateTime', '{$Field}', '{$Value}')");
 }
 
 // *****************************************************************************
@@ -201,7 +159,8 @@ function RESTData($TimeStamp, $Field, $Value)
 
 function SpyData($Report)
 {
-	$GLOBALS['Db']->query("INSERT INTO ".SPYDATA." (UID, DateTime, Report) VALUES ({$GLOBALS['St']['UID']}, '".UnixToMySQLTime(GetTimeNow(false))."', '{$Report}')");
+	$GLOBALS['Db']->query("INSERT INTO ".SPYDATA." (SID, DateTime, Report) VALUES ({$GLOBALS['St']['SIDx']->ID}, '".EpochToMySQLTime(GetTimeNow(false))."', '{$Report}')");
 }
+
 
 ?>
